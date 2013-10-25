@@ -1,0 +1,97 @@
+diff --git a/src/plumbing/transcoding.c b/src/plumbing/transcoding.c
+index e0e2117..3d37204 100644
+--- a/src/plumbing/transcoding.c
++++ b/src/plumbing/transcoding.c
+@@ -21,6 +21,7 @@
+ #include <libavcodec/avcodec.h>
+ #include <libswscale/swscale.h>
+ #include <libavutil/dict.h>
++#include <libavutil/channel_layout.h>
+ 
+ #include "tvheadend.h"
+ #include "settings.h"
+@@ -202,6 +203,7 @@ transcoder_stream_subtitle(transcoder_stream_t *ts, th_pkt_t *pkt)
+   AVCodecContext *ictx;
+   AVPacket packet;
+   AVSubtitle sub;
++  AVDictionary *opts = NULL;
+   int length,  got_subtitle;
+ 
+   subtitle_stream_t *ss = (subtitle_stream_t*)ts;
+@@ -215,7 +217,7 @@ transcoder_stream_subtitle(transcoder_stream_t *ts, th_pkt_t *pkt)
+   if (ictx->codec_id == CODEC_ID_NONE) {
+     ictx->codec_id = icodec->id;
+ 
+-    if (avcodec_open(ictx, icodec) < 0) {
++    if (avcodec_open2(ictx, icodec, &opts) < 0) {
+       tvhlog(LOG_ERR, "transcode", "Unable to open %s decoder", icodec->name);
+       ts->ts_index = 0;
+       goto cleanup;
+@@ -262,6 +264,7 @@ transcoder_stream_audio(transcoder_stream_t *ts, th_pkt_t *pkt)
+   streaming_message_t *sm;
+   th_pkt_t *n;
+   audio_stream_t *as = (audio_stream_t*)ts;
++  AVDictionary *opts = NULL;
+ 
+   ictx = as->aud_ictx;
+   octx = as->aud_octx;
+@@ -272,7 +275,7 @@ transcoder_stream_audio(transcoder_stream_t *ts, th_pkt_t *pkt)
+   if (ictx->codec_id == CODEC_ID_NONE) {
+     ictx->codec_id = icodec->id;
+ 
+-    if (avcodec_open(ictx, icodec) < 0) {
++    if (avcodec_open2(ictx, icodec, &opts) < 0) {
+       tvhlog(LOG_ERR, "transcode", "Unable to open %s decoder", icodec->name);
+       ts->ts_index = 0;
+       goto cleanup;
+@@ -391,7 +394,7 @@ transcoder_stream_audio(transcoder_stream_t *ts, th_pkt_t *pkt)
+   if (octx->codec_id == CODEC_ID_NONE) {
+     octx->codec_id = ocodec->id;
+ 
+-    if (avcodec_open(octx, ocodec) < 0) {
++    if (avcodec_open2(octx, ocodec, &opts) < 0) {
+       tvhlog(LOG_ERR, "transcode", "Unable to open %s encoder", ocodec->name);
+       ts->ts_index = 0;
+       goto cleanup;
+@@ -477,7 +480,7 @@ transcoder_stream_video(transcoder_stream_t *ts, th_pkt_t *pkt)
+   if (ictx->codec_id == CODEC_ID_NONE) {
+     ictx->codec_id = icodec->id;
+ 
+-    if (avcodec_open(ictx, icodec) < 0) {
++    if (avcodec_open2(ictx, icodec, &opts) < 0) {
+       tvhlog(LOG_ERR, "transcode", "Unable to open %s decoder", icodec->name);
+       ts->ts_index = 0;
+       goto cleanup;
+@@ -852,8 +855,8 @@ transcoder_init_subtitle(transcoder_t *t, streaming_start_component_t *ssc)
+   ss->sub_icodec = icodec;
+   ss->sub_ocodec = ocodec;
+ 
+-  ss->sub_ictx = avcodec_alloc_context();
+-  ss->sub_octx = avcodec_alloc_context();
++  ss->sub_ictx = avcodec_alloc_context3(icodec);
++  ss->sub_octx = avcodec_alloc_context3(ocodec);
+ 
+   ss->sub_ictx->codec_type = AVMEDIA_TYPE_SUBTITLE;
+   ss->sub_octx->codec_type = AVMEDIA_TYPE_SUBTITLE;
+@@ -944,8 +947,8 @@ transcoder_init_audio(transcoder_t *t, streaming_start_component_t *ssc)
+   as->aud_icodec = icodec;
+   as->aud_ocodec = ocodec;
+ 
+-  as->aud_ictx = avcodec_alloc_context();
+-  as->aud_octx = avcodec_alloc_context();
++  as->aud_ictx = avcodec_alloc_context3(icodec);
++  as->aud_octx = avcodec_alloc_context3(ocodec);
+ 
+   as->aud_ictx->codec_type = AVMEDIA_TYPE_AUDIO;
+   as->aud_octx->codec_type = AVMEDIA_TYPE_AUDIO;
+@@ -1054,8 +1057,8 @@ transcoder_init_video(transcoder_t *t, streaming_start_component_t *ssc)
+   vs->vid_icodec = icodec;
+   vs->vid_ocodec = ocodec;
+ 
+-  vs->vid_ictx = avcodec_alloc_context();
+-  vs->vid_octx = avcodec_alloc_context();
++  vs->vid_ictx = avcodec_alloc_context3(icodec);
++  vs->vid_octx = avcodec_alloc_context3(ocodec);
+ 
+   avcodec_get_context_defaults3(vs->vid_ictx, icodec);
+   avcodec_get_context_defaults3(vs->vid_octx, ocodec);
