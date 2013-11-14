@@ -1,0 +1,30 @@
+--- gdb/remote.c.orig	2013-10-15 11:36:30.287817739 +0200
++++ gdb/remote.c	2013-10-15 11:54:28.225162932 +0200
+@@ -6109,9 +6109,24 @@ process_g_packet (struct regcache *regca
+ 
+   buf_len = strlen (rs->buf);
+ 
+-  /* Further sanity checks, with knowledge of the architecture.  */
+-  if (buf_len > 2 * rsa->sizeof_g_packet)
+-    error (_("Remote 'g' packet reply is too long: %s"), rs->buf);
++  /* Further sanity checks, with knowledge of the architecture.
++     Patch by: z0rr0 from http://forum.osdev.org/viewtopic.php?f=13&p=177644 */
++  if (buf_len > 2 * rsa->sizeof_g_packet) {
++    rsa->sizeof_g_packet = buf_len;
++
++    warning (_("remote 'g' packet reply is too long; buffer resized (propably longmode entered?)"));
++
++    for (i = 0; i < gdbarch_num_regs (gdbarch); i++)
++    {
++      if (rsa->regs[i].pnum == -1)
++        continue;
++
++      if (rsa->regs[i].offset >= rsa->sizeof_g_packet)
++        rsa->regs[i].in_g_packet = 0;
++      else
++        rsa->regs[i].in_g_packet = 1;
++    }
++  }
+ 
+   /* Save the size of the packet sent to us by the target.  It is used
+      as a heuristic when determining the max size of packets that the
